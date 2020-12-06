@@ -1,0 +1,376 @@
+import numpy as nu
+import pandas as pd
+from matplotlib import pyplot as pl
+import os
+import time
+import pickle
+import datetime as dt
+from scipy.optimize import curve_fit
+from scipy.optimize import minimize, fmin_cg, Bounds, LinearConstraint
+from numpy import sqrt, abs
+from CoilClass import Coil
+
+
+
+class Agent():
+    def __init__(self):
+        self.bzDistributionPath = './BzDistribution.csv'
+        self.parametersFilePath = './parameters.csv'
+        self.minRadius = 3.0e-2  # 3cm
+        self.Z0 = 15e-2  # 15cm
+        self.scWidth = 4e-3  # 4mm
+        self.scThickness = 0.1e-3  # 0.1mm
+        self.layerAmount = 8
+        self.stairAmount = int(self.Z0*2/self.scWidth)
+        self.B0 = 1
+
+        self.survivalPerGeneration = 30
+        self.descendantsPerLife = 6
+        # set avgLosses
+        if os.path.exists('averageLosses.pickle'):
+            with open('averageLosses.pickle', 'rb') as file:
+                self.averageLosses = pickle.load(file)
+        else:
+            self.averageLosses = nu.array([])
+        # get the last generation
+        if os.path.exists('lastGeneration.pickle'):
+            with open('lastGeneration.pickle', 'rb') as file:
+                self.survived = pickle.load(file)
+        # initial the first generation
+        else:
+            coil = Coil()
+            self.survived = coil.makeDescendants(amount=self.survivalPerGeneration)
+
+
+    def run(self):
+        step = 1
+        while True:
+            _start = dt.datetime.now()
+            # make next generation
+            generation = []
+            for coil in self.survived:
+                # for each current coil, make babies
+                babyCoils = coil.makeDescendants(amount=self.descendantsPerLife)
+                # calculate their losses
+                for _coil in babyCoils:
+                    _coil.loss = self.lossOf(_coil)
+                generation.extend(babyCoils)
+            # get survived coils
+            self.survived = sorted(generation, key=lambda coil: coil.loss)[:self.survivalPerGeneration]
+            # show information for current loop
+            _averageLoss = nu.array([ coil.loss for coil in self.survived ]).mean()
+            _end = dt.datetime.now()
+            print('step: {:>4}, avgLoss: {:>18.16f} (time cost: {:.3g}[min])'.format(step+1, _averageLoss, (_end-_start).total_seconds()/60))
+            # prepare for the next loop
+            step += 1
+
+
+    def createParametersFile(self, coil):
+        # basic constants
+        data = pd.DataFrame({
+            'parameter': 'scWidth',
+            'value': f'{self.scWidth*1000}[mm]'
+        })
+        data = data.append({'parameter': 'Z0', 'value': f'{self.Z0*100}'})
+        data = data.append({'parameter': 'l2', 'value': f'{self.Z0*2*100}[cm]'})
+        data = data.append({'parameter': 'minRadius', 'value': f'{self.minRadius*100}[cm]'})
+        data = data.append({'parameter': 'scThickness', 'value': f'{self.scThickness*1000}[mm]'})
+        data = data.append({'parameter': 'rowAmount', 'value': f'{self.layerAmount*1000}[mm]'})
+        data = data.append({'parameter': 'B0', 'value': f'{self.B0}[T]'})
+        # coil positions
+        for layer in range(self.layerAmount):
+            for stair in range(self.stairAmount):
+                didExist = coil.distribution[layer, stair] == 1
+                # if the ring is that position exists
+                if didRingExist:
+                    data = data.append({'parameter': f'ring_{layer}_{stair}', 'value': '1'})
+                else:
+                    data = data.append({'parameter': f'ring_{layer}_{stair}', 'value': '0'})
+        data.to_csv(self.parametersFilePath, index=False)
+
+
+    def lossOf(self, coil):
+        # create parametersFile with coil distribution
+        self.createParametersFile(coil=coil)
+        # check if loss file exists
+        while True:
+            if os.path.exists(self.bzDistributionPath):
+                if os.path.getsize(self.bzDistributionPath) >= 100:
+                    break
+            time.sleep(1)
+        # get loss
+        # _loss = getVariance(self.bzDistributionPath)
+        data = pd.read_csv(self.bzDistributionPath, skiprows=8)
+        data.columns = ['r', 'z', 'B']
+        # data['r'] *= 1e2  # [m] -> [cm]
+        # data['z'] *= 1e2  # [m] -> [cm]
+        bsOut = nu.array([])
+        bsIn = nu.array([])
+        for i in data.index:
+            lo = data.iloc[i, 0]
+            z = data.iloc[i, 1]
+            z_abs = abs(z)
+            b = data.iloc[i, 2]
+            # inside
+            if lo <= self.minRadius*0.99 and z_abs <= self.Z0:
+                bsIn = nu.append(bsIn, data.iloc[i, 2])
+            # outside
+            # elif 1.4*minRadius >= lo >= minRadius*1.01 or 1.4*Z0 >= z_abs > Z0:
+            elif 2.0*self.minRadius >= lo and 1.8*self.Z0 >= z_abs > self.Z0:
+                bsOut = nu.append(bsOut, data.iloc[i, 2])
+            # mergin
+            else:
+                continue
+        # print(bsIn)
+        # print(f'bsIn shape = {bsIn.shape}')
+        # print(bsOut)
+        # print(f'bsOut shape = {bsOut.shape}')
+        bsIn = bsIn[~nu.isnan(bsIn)]
+        bsOut = bsOut[~nu.isnan(bsOut)]
+        assert bsIn.shape[0] >= 100
+        assert bsOut.shape[0] >= 100
+        # return 100 * (1/abs(bsOut).mean() + abs(bsIn).mean())
+        _loss = abs(bsIn).mean() / abs(bsOut).mean()
+
+        # if we get loss, delete curveDistribution, so make sure comsol wait for enough long time after study is completed.
+        try:
+            os.remove(self.parametersFilePath)
+        except PermissionError:
+            time.sleep(1)
+            os.remove(self.parametersFilePath)
+
+        try:
+            os.remove(self.bzDistributionPath)
+        except PermissionError:
+            time.sleep(1)
+            os.remove(self.bzDistributionPath)
+
+        return _loss
+
+
+
+# Main
+
+if __name__ == '__main__':
+    agent = Agent()
+    agent.run()
+
+
+# # Constant
+# brDistributionPath = './BrDistribution.csv'
+# bzDistributionPath = './BzDistribution.csv'
+# minRadius = 3.0  # 3.0cm
+# Z0 = 15  # 15cm
+# loms = nu.linspace(0, 0.9*minRadius, 300)
+# # gloabl variable
+# ws = nu.zeros(4)
+# averageLosses = None
+# FMThickness = 0.1  # 0.1cm
+#
+#
+# def curveFunction(loms, ws):
+#     if loms is nu.float:
+#         return ws[0] + ws[1] * loms**1 + ws[2] * loms**2 + ws[3] * loms**3# + ws[4] * loms**4 + ws[5] * loms**5
+#     elif len(loms) >= 2:
+#         zms = nu.zeros(len(loms))
+#         for i, lo in enumerate(loms):
+#             zms[i] = ws[0] + ws[1] * lo**1 + ws[2] * lo**2 + ws[3] * lo**3# + ws[4] * lo**4 + ws[5] * lo**5
+#         return zms
+#     else:
+#         print('ValueError')
+#         raise ValueError
+#
+#
+# def isPointOnMagnet(lo, z, ws):
+#     if z >= 0:
+#         zm = curveFunction(lo, ws)
+#         return abs(z-zm) <= FMThickness
+#     else:
+#         zm = -curveFunction(lo, ws)
+#         return abs(z-zm) <= FMThickness
+#
+#
+# def getVariance(path, minRadius, Z0):
+#     assert os.path.exists(path)
+#     global minRadius, Z0
+#     data = pd.read_csv(path, skiprows=8)
+#     data.columns = ['r', 'z', 'B']
+#     data['r'] *= 1e2  # [m] -> [cm]
+#     data['z'] *= 1e2  # [m] -> [cm]
+#
+#     bsOut = nu.array([])
+#     bsIn = nu.array([])
+#     for i in data.index:
+#         lo = data.iloc[i, 0]
+#         z = data.iloc[i, 1]
+#         z_abs = abs(z)
+#         b = data.iloc[i, 2]
+#         # inside
+#         if lo <= minRadius*0.99 and z_abs <= Z0:
+#             bsIn = nu.append(bsIn, data.iloc[i, 2])
+#         # outside
+#         # elif 1.4*minRadius >= lo >= minRadius*1.01 or 1.4*Z0 >= z_abs > Z0:
+#         elif 2.0*minRadius >= lo and 1.8*Z0 >= z_abs > Z0:
+#             bsOut = nu.append(bsOut, data.iloc[i, 2])
+#         # mergin
+#         else:
+#             continue
+#     # print(bsIn)
+#     # print(f'bsIn shape = {bsIn.shape}')
+#     # print(bsOut)
+#     # print(f'bsOut shape = {bsOut.shape}')
+#     bsIn = bsIn[~nu.isnan(bsIn)]
+#     bsOut = bsOut[~nu.isnan(bsOut)]
+#     assert bsIn.shape[0] >= 100
+#     assert bsOut.shape[0] >= 100
+#     # return 100 * (1/abs(bsOut).mean() + abs(bsIn).mean())
+#     return abs(bsIn).mean() / abs(bsOut).mean()
+#
+#     # data = data.pivot(index='r', columns='z', values='B')
+#     # _var = nu.var(data.iloc[:200*3//4, 46].values)
+#     # _mean = data.iloc[:200*3//4, 46].values.mean()
+#     # return _var + abs(_mean)
+#
+#
+# def loss(coil):
+#     # create parametersFile with coil distribution
+#     self.createParametersFile(path=self.parametersFilePath)
+#     # check if loss file exists
+#     while True:
+#         if os.path.exists(self.bzDistributionPath):
+#             if os.path.getsize(self.bzDistributionPath) >= 100:
+#                 break
+#         time.sleep(1)
+#     # get loss
+#     _loss = getVariance(self.bzDistributionPath)
+#     # if we get loss, delete curveDistribution, so make sure comsol wait for enough long time after study is completed.
+#     try:
+#         os.remove(self.parametersFilePath)
+#     except PermissionError:
+#         time.sleep(1)
+#         os.remove(self.parametersFilePath)
+#
+#     try:
+#         os.remove(self.bzDistributionPath)
+#     except PermissionError:
+#         time.sleep(1)
+#         os.remove(self.bzDistributionPath)
+#
+#     return _loss
+#
+#
+# def callback(ws, result):
+# # def callback(ws):
+#     currentLoss = loss(ws)
+#     global averageLosses, weights, start, step
+#     averageLosses = nu.append(averageLosses, currentLoss)
+#     weights = nu.concatenate([weights, ws.reshape(1, -1)])
+#     timeDelta = (dt.datetime.now() - start).total_seconds()
+#     print('step: {:>2}, avgLoss: {}, cost: {:>4.2f}[min]'.format(step, currentLoss, timeDelta/60))
+#     with open('averageLosses.pickle', 'wb') as file:
+#         pickle.dump(averageLosses, file)
+#     with open('weights.pickle', 'wb') as file:
+#         pickle.dump(weights, file)
+#     start = dt.datetime.now()
+#     step += 1
+#     for key, value in result.items():
+#         # print(f'{key}: {value}')
+#         pass
+#     return False
+#
+#
+# # Main
+# # show init ws
+# # pl.scatter(loms, sqrt(minRadius**2 - loms**2) + Z0-minRadius)
+# # pl.plot(loms, curveFunction(loms))
+# # pl.show()
+#
+# # set avgLosses
+# if os.path.exists('averageLosses.pickle'):
+#     with open('averageLosses.pickle', 'rb') as file:
+#         averageLosses = pickle.load(file)
+# else:
+#     averageLosses = nu.array([])
+# # set weights and ws
+# if os.path.exists('weights.pickle'):
+#     with open('weights.pickle', 'rb') as file:
+#         weights = pickle.load(file)
+#     ws = weights[-1, :]
+# else:
+#     # def wsModel(loms, w0, w1, w2, w3, w4, w5):
+#     def wsModel(loms, w0, w1, w2, w3):
+#         n = len(loms)
+#         result = nu.concatenate([
+#             nu.ones(n).reshape(-1, 1),
+#             loms.reshape(-1, 1),
+#             (loms**2).reshape(-1, 1),
+#             (loms**3).reshape(-1, 1)
+#             # (loms**4).reshape(-1, 1),
+#             # (loms**5).reshape(-1, 1)
+#         # ], axis=-1) @ nu.array([w0, w1, w2, w3, w4, w5]).reshape(-1, 1)
+#         ], axis=-1) @ nu.array([w0, w1, w2, w3]).reshape(-1, 1)
+#         return result.ravel()
+#     R = 0.9*minRadius
+#     ws, _ = curve_fit(wsModel, xdata=loms, ydata=sqrt(R**2 - loms**2) + Z0-R, p0=ws.tolist())
+#     # ws = nu.array([ws[0], ws[1], ws[2], ws[3], ws[4], ws[5]])
+#     ws = nu.array([ws[0], ws[1], ws[2], ws[3]])
+#     # ws = nu.array([0.9*Z0, 0, 0, 0, 0, 0])
+#     weights = nu.array([[ws[0], ws[1], ws[2], ws[3]]]).reshape(1, -1)
+#     # weights = nu.array([[ws[0], ws[1], ws[2], ws[3], ws[4], ws[5]]]).reshape(1, -1)
+# # set step
+# if os.path.exists('weights.pickle'):
+#     step = weights.shape[0]
+# else:
+#     step = 1
+#
+# start = dt.datetime.now()
+#
+# # while True:
+# #     # update w
+# #     for i in range(6):
+# #         _wp = nu.array([ws[0], ws[1], ws[2], ws[3], ws[4], ws[5]])
+# #         _wm = nu.array([ws[0], ws[1], ws[2], ws[3], ws[4], ws[5]])
+# #         _wp[i] += h
+# #         _wm[i] -= h
+# #         pLoss = loss(_wp)
+# #         mLoss = loss(_wm)
+# #         # print('w[{}] -= {} * ({} - {}) / (2*{})'.format(i, alpha, pLoss, mLoss, h))
+# #         ws[i] -= alpha * ( pLoss - mLoss )/(2*h)
+# #     currentLoss = loss(ws)
+# #     averageLosses = nu.append(averageLosses, currentLoss)
+# #     weights = nu.concatenate([weights, ws.reshape(1, -1)])
+# #     print('step: {:>2}, avgLoss: {}'.format(step, currentLoss))
+# #     # store losses
+# #     with open('averageLosses.pickle', 'wb') as file:
+# #         pickle.dump(averageLosses, file)
+# #     with open('weights.pickle', 'wb') as file:
+# #         pickle.dump(weights, file)
+# #     # next loop
+# #     step += 1
+#
+# ZL = Z0 - 0.9*minRadius
+# ZU = Z0 + 0.9*minRadius
+# _loms = nu.linspace(0, 0.9*minRadius, 10)
+# # _A = nu.array([1, _loms[0], _loms[0]**2, _loms[0]**3, _loms[0]**4, _loms[0]**5]).reshape(1, -1)
+# _A = nu.array([1, _loms[0], _loms[0]**2, _loms[0]**3]).reshape(1, -1)
+# for lo in _loms[1:]:
+#     # _A = nu.concatenate([_A, nu.array([1, lo, lo**2, lo**3, lo**4, lo**5]).reshape(1, -1)])
+#     _A = nu.concatenate([_A, nu.array([1, lo, lo**2, lo**3]).reshape(1, -1)])
+# print(_A)
+# constraint = LinearConstraint(A=_A, lb=ZL, ub=ZU)
+# result = minimize(fun=loss, x0=ws, method='trust-constr', constraints=constraint, callback=callback, options={'gtol': 1e-10, 'maxiter': 100000, 'disp': True,  'initial_tr_radius': 1, 'verbose': 3, 'initial_constr_penalty': 0.5})
+# # result = minimize(fun=loss, x0=ws, method='BFGS', callback=callback)
+#
+# constraints = []
+# for lo in _loms:
+#     constraints.append({
+#         'type': 'ineq',
+#         'fun': lambda w: w[0] + w[1]*lo + w[2]*lo**2 + w[3]*lo**3 - ZL,
+#         # 'jac': lambda xs: nu.array([1, lo, lo**2, lo**3])
+#     })
+#     constraints.append({
+#         'type': 'ineq',
+#         'fun': lambda w: ZU - (w[0] + w[1]*lo + w[2]*lo**2 + w[3]*lo**3),
+#         # 'jac': lambda xs: -1 * nu.array([1, lo, lo**2, lo**3])
+#     })
+# # result = minimize(fun=loss, x0=ws, method='COBYLA', constraints=constraints, jac=None, callback=callback, options={'maxiter': 10000, 'disp': True})
