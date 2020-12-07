@@ -38,7 +38,7 @@ class Agent():
                 self.survived = pickle.load(file)
         # initial the first generation
         else:
-            coil = Coil()
+            coil = Coil(length=self.Z0*2, minRadius=self.minRadius, scWidth=self.scWidth, scThickness=self.scThickness, stairAmount=self.stairAmount, layerAmount=self.layerAmount)
             self.survived = coil.makeDescendants(amount=self.survivalPerGeneration)
 
 
@@ -68,25 +68,25 @@ class Agent():
     def createParametersFile(self, coil):
         # basic constants
         data = pd.DataFrame({
-            'parameter': 'scWidth',
-            'value': f'{self.scWidth*1000}[mm]'
+            'parameter': ['scWidth'],
+            'value': [f'{self.scWidth*1000}[mm]']
         })
-        data = data.append({'parameter': 'Z0', 'value': f'{self.Z0*100}'})
-        data = data.append({'parameter': 'l2', 'value': f'{self.Z0*2*100}[cm]'})
-        data = data.append({'parameter': 'minRadius', 'value': f'{self.minRadius*100}[cm]'})
-        data = data.append({'parameter': 'scThickness', 'value': f'{self.scThickness*1000}[mm]'})
-        data = data.append({'parameter': 'layerAmount', 'value': f'{self.layerAmount}'})
-        data = data.append({'parameter': 'stairAmount', 'value': f'{self.stairAmount}'})
-        data = data.append({'parameter': 'B0', 'value': f'{self.B0}[T]'})
+        data = data.append({'parameter': 'Z0', 'value': f'{self.Z0*100}'}, ignore_index=True)
+        data = data.append({'parameter': 'l2', 'value': f'{self.Z0*2*100}[cm]'}, ignore_index=True)
+        data = data.append({'parameter': 'minRadius', 'value': f'{self.minRadius*100}[cm]'}, ignore_index=True)
+        data = data.append({'parameter': 'scThickness', 'value': f'{self.scThickness*1000}[mm]'}, ignore_index=True)
+        data = data.append({'parameter': 'layerAmount', 'value': f'{self.layerAmount}'}, ignore_index=True)
+        data = data.append({'parameter': 'stairAmount', 'value': f'{self.stairAmount}'}, ignore_index=True)
+        data = data.append({'parameter': 'B0', 'value': f'{self.B0}[T]'}, ignore_index=True)
         # coil positions
         for layer in range(self.layerAmount):
             for stair in range(self.stairAmount):
                 didExist = coil.distribution[layer, stair] == 1
                 # if the ring is that position exists
                 if didRingExist:
-                    data = data.append({'parameter': f'ring_{layer}_{stair}', 'value': '1'})
+                    data = data.append({'parameter': f'ring_{layer}_{stair}', 'value': '1'}, ignore_index=True)
                 else:
-                    data = data.append({'parameter': f'ring_{layer}_{stair}', 'value': '0'})
+                    data = data.append({'parameter': f'ring_{layer}_{stair}', 'value': '0'}, ignore_index=True)
         data.to_csv(self.parametersFilePath, index=False)
 
 

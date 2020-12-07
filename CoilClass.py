@@ -15,25 +15,28 @@ import sys
 
 
 class Coil():
-    def __init__(self, baseCoil=None):
-        self.length = 30e-2
+    def __init__(self, length, minRadius, scWidth, scThickness, stairAmount, layerAmount):
+        self.length = length
         self.Z0 = self.length/2
-        self.minRadius = 3e-2
-        self.scWidth = 12e-3
-        self.scThickness = 100e-6
-        self.columnAmount = int(self.length/self.scWidth)
-        self.rowAmount = 10  # max turns
-        #
-        if baseCoil == None:
-            self.distribution = nu.zeros((self.rowAmount, self.columnAmount), dtype=nu.int)
-            self.distribution[self.rowAmount//2:, :] = 1
-            #
-            self.distributionInRealCoordinates = self.calculateDistributionInRealCoordinates()
-        else:
-            self.distribution = baseCoil.distribution.copy()
-            self.distributionInRealCoordinates = self.calculateDistributionInRealCoordinates()
-        #
+        self.minRadius = minRadius
+        self.scWidth = scWidth
+        self.scThickness = scThickness
+        self.columnAmount = stairAmount
+        self.rowAmount = layerAmount  # max turns
+
+        self.distribution = nu.zeros((self.rowAmount, self.columnAmount), dtype=nu.int)
+        self.distribution[self.rowAmount//2:, :] = 1
+        self.distributionInRealCoordinates = self.calculateDistributionInRealCoordinates()
         self.loss = None
+
+
+    @classmethod
+    def initFromBaseCoil(cls, baseCoil):
+        coil = Coil(length=baseCoil.length, minRadius=baseCoil.minRadius, scWidth=baseCoil.scWidth, scThickness=baseCoil.scThickness, stairAmount=baseCoil.columnAmount, layer=baseCoil.rowAmount)
+        coil.distribution = baseCoil.distribution.copy()
+        coil.distributionInRealCoordinates = self.calculateDistributionInRealCoordinates()
+        coil.loss = baseCoil.loss
+        return coil
 
 
     # for pickle
@@ -73,7 +76,7 @@ class Coil():
 
 
     def makeDescendant(self, row, column, shouldIncrease):
-        coil = Coil(baseCoil=self)
+        coil = Coil.initFromBaseCoil(baseCoil=self)
         if shouldIncrease:
             coil.distribution[row, column] = 1
             coil.distribution[row, -1-column] = 1
