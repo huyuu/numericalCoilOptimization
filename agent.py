@@ -16,6 +16,7 @@ class Agent():
     def __init__(self):
         self.bzDistributionPath = './BzDistribution.csv'
         self.parametersFilePath = './parameters.csv'
+        self.coilDistributionPath = 'coilDistribution.csv'
         self.minRadius = 3.0e-2  # 3cm
         self.Z0 = 15e-2  # 15cm
         self.scWidth = 4e-3  # 4mm
@@ -85,6 +86,7 @@ class Agent():
 
 
     def createCoilDistributionFile(self, coil):
+        data = pd.DataFrame({}, columns=['layer', 'stair'])
         # coil positions
         comsolDistribution = coil.distribution.T[:, ::-1]
         for layer in range(self.layerAmount):
@@ -92,10 +94,8 @@ class Agent():
                 didRingExist = comsolDistribution[stair, layer] == 1
                 # if the ring is that position exists
                 if didRingExist:
-                    data = data.append({'parameter': f'ring_{stair}_{layer}', 'value': '1'}, ignore_index=True)
-                else:
-                    data = data.append({'parameter': f'ring_{stair}_{layer}', 'value': '0'}, ignore_index=True)
-        data.to_csv(self.parametersFilePath, header=False, index=False)
+                    data = data.append({'layer': layer, 'stair': stair}, ignore_index=True)
+        data.to_csv(self.coilDistributionPath, header=False, index=False)
 
 
     def lossOf(self, coil):
@@ -143,10 +143,10 @@ class Agent():
 
         # if we get loss, delete curveDistribution, so make sure comsol wait for enough long time after study is completed.
         try:
-            os.remove(self.parametersFilePath)
+            os.remove(self.coilDistributionPath)
         except PermissionError:
             time.sleep(1)
-            os.remove(self.parametersFilePath)
+            os.remove(self.coilDistributionPath)
 
         try:
             os.remove(self.bzDistributionPath)
