@@ -32,9 +32,9 @@ class Coil():
 
     @classmethod
     def initFromBaseCoil(cls, baseCoil):
-        coil = Coil(length=baseCoil.length, minRadius=baseCoil.minRadius, scWidth=baseCoil.scWidth, scThickness=baseCoil.scThickness, stairAmount=baseCoil.columnAmount, layer=baseCoil.rowAmount)
+        coil = Coil(length=baseCoil.length, minRadius=baseCoil.minRadius, scWidth=baseCoil.scWidth, scThickness=baseCoil.scThickness, stairAmount=baseCoil.columnAmount, layerAmount=baseCoil.rowAmount)
         coil.distribution = baseCoil.distribution.copy()
-        coil.distributionInRealCoordinates = self.calculateDistributionInRealCoordinates()
+        coil.distributionInRealCoordinates = baseCoil.distributionInRealCoordinates.copy()
         coil.loss = baseCoil.loss
         return coil
 

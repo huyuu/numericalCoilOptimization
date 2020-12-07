@@ -20,6 +20,7 @@ class Agent():
         self.Z0 = 15e-2  # 15cm
         self.scWidth = 4e-3  # 4mm
         self.scThickness = 0.1e-3  # 0.1mm
+        self.airGap = self.scThickness/2
         self.layerAmount = 8
         self.stairAmount = int(self.Z0*2/self.scWidth)
         self.B0 = 1
@@ -71,23 +72,25 @@ class Agent():
             'parameter': ['scWidth'],
             'value': [f'{self.scWidth*1000}[mm]']
         })
-        data = data.append({'parameter': 'Z0', 'value': f'{self.Z0*100}'}, ignore_index=True)
+        data = data.append({'parameter': 'Z0', 'value': f'{self.Z0*100}[cm]'}, ignore_index=True)
         data = data.append({'parameter': 'l2', 'value': f'{self.Z0*2*100}[cm]'}, ignore_index=True)
         data = data.append({'parameter': 'minRadius', 'value': f'{self.minRadius*100}[cm]'}, ignore_index=True)
         data = data.append({'parameter': 'scThickness', 'value': f'{self.scThickness*1000}[mm]'}, ignore_index=True)
         data = data.append({'parameter': 'layerAmount', 'value': f'{self.layerAmount}'}, ignore_index=True)
         data = data.append({'parameter': 'stairAmount', 'value': f'{self.stairAmount}'}, ignore_index=True)
         data = data.append({'parameter': 'B0', 'value': f'{self.B0}[T]'}, ignore_index=True)
+        data = data.append({'parameter': 'airGap', 'value': f'{self.airGap*1e3}[mm]'}, ignore_index=True)
         # coil positions
+        comsolDistribution = coil.distribution.T[:, ::-1]
         for layer in range(self.layerAmount):
             for stair in range(self.stairAmount):
-                didExist = coil.distribution[layer, stair] == 1
+                didRingExist = comsolDistribution[stair, layer] == 1
                 # if the ring is that position exists
                 if didRingExist:
-                    data = data.append({'parameter': f'ring_{layer}_{stair}', 'value': '1'}, ignore_index=True)
+                    data = data.append({'parameter': f'ring_{stair}_{layer}', 'value': '1'}, ignore_index=True)
                 else:
-                    data = data.append({'parameter': f'ring_{layer}_{stair}', 'value': '0'}, ignore_index=True)
-        data.to_csv(self.parametersFilePath, index=False)
+                    data = data.append({'parameter': f'ring_{stair}_{layer}', 'value': '0'}, ignore_index=True)
+        data.to_csv(self.parametersFilePath, header=False, index=False)
 
 
     def lossOf(self, coil):
