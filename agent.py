@@ -44,6 +44,7 @@ class Agent():
 
 
     def run(self):
+        self.createParametersFile()
         step = 1
         while True:
             _start = dt.datetime.now()
@@ -66,7 +67,7 @@ class Agent():
             step += 1
 
 
-    def createParametersFile(self, coil):
+    def createParametersFile(self):
         # basic constants
         data = pd.DataFrame({
             'parameter': ['scWidth'],
@@ -80,6 +81,10 @@ class Agent():
         data = data.append({'parameter': 'stairAmount', 'value': f'{self.stairAmount}'}, ignore_index=True)
         data = data.append({'parameter': 'B0', 'value': f'{self.B0}[T]'}, ignore_index=True)
         data = data.append({'parameter': 'airGap', 'value': f'{self.airGap*1e3}[mm]'}, ignore_index=True)
+        data.to_csv(self.parametersFilePath, header=False, index=False)
+
+
+    def createCoilDistributionFile(self, coil):
         # coil positions
         comsolDistribution = coil.distribution.T[:, ::-1]
         for layer in range(self.layerAmount):
@@ -95,7 +100,7 @@ class Agent():
 
     def lossOf(self, coil):
         # create parametersFile with coil distribution
-        self.createParametersFile(coil=coil)
+        self.createCoilDistributionFile(coil=coil)
         # check if loss file exists
         while True:
             if os.path.exists(self.bzDistributionPath):
