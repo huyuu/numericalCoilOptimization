@@ -75,7 +75,8 @@ class Agent():
         data = data.append({'parameter': 'l2', 'value': f'{self.Z0*2*100}[cm]'})
         data = data.append({'parameter': 'minRadius', 'value': f'{self.minRadius*100}[cm]'})
         data = data.append({'parameter': 'scThickness', 'value': f'{self.scThickness*1000}[mm]'})
-        data = data.append({'parameter': 'rowAmount', 'value': f'{self.layerAmount*1000}[mm]'})
+        data = data.append({'parameter': 'layerAmount', 'value': f'{self.layerAmount}'})
+        data = data.append({'parameter': 'stairAmount', 'value': f'{self.stairAmount}'})
         data = data.append({'parameter': 'B0', 'value': f'{self.B0}[T]'})
         # coil positions
         for layer in range(self.layerAmount):
