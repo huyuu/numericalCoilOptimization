@@ -76,6 +76,8 @@ class Agent():
         })
         data = data.append({'parameter': 'Z0', 'value': f'{self.Z0*100}[cm]'}, ignore_index=True)
         data = data.append({'parameter': 'l2', 'value': f'{self.Z0*2*100}[cm]'}, ignore_index=True)
+        data = data.append({'parameter': 'l1', 'value': f'{20}[cm]'}, ignore_index=True)
+        data = data.append({'parameter': 'outerCoilWidth', 'value': f'{2}[cm]'}, ignore_index=True)
         data = data.append({'parameter': 'minRadius', 'value': f'{self.minRadius*100}[cm]'}, ignore_index=True)
         data = data.append({'parameter': 'scThickness', 'value': f'{self.scThickness*1000}[mm]'}, ignore_index=True)
         data = data.append({'parameter': 'layerAmount', 'value': f'{self.layerAmount}'}, ignore_index=True)

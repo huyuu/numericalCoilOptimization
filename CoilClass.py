@@ -143,7 +143,7 @@ class Coil():
 
 
 def plotBzDistribution(points=50):
-        data = pd.read_csv('tempBzDistribution.csv')
+        data = pd.read_csv('tempBnormDistribution.csv')
         data = data.pivot(index='r', columns='z', values='B')
         pl.contourf(data.index, data.columns, data.values.T)
         pl.colorbar()
