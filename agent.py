@@ -111,6 +111,7 @@ class Agent():
         # _loss = getVariance(self.bzDistributionPath)
         data = pd.read_csv(self.bzDistributionPath, skiprows=8)
         data.columns = ['r', 'z', 'B']
+        data.to_csv('./tempBzDistribution.csv', index=False)
         # data['r'] *= 1e2  # [m] -> [cm]
         # data['z'] *= 1e2  # [m] -> [cm]
         bsOut = nu.array([])

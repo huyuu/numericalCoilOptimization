@@ -142,29 +142,13 @@ class Coil():
         return Ms.sum()
 
 
-    def plotBzDistribution(self, points=50):
-        # get L2
-        L2 = self.calculateL()
-        # get M
-        M = 0
-        for r2, z2 in self.distributionInRealCoordinates:
-            for z1 in nu.linspace(-l1/2, l1/2, N1):
-                M += MutalInductance(r1, r2, d=abs(z2-z1))
-        # get a, b at specific position
-        loss = 0
-        los = nu.concatenate([
-            nu.linspace(0.01*self.minRadius, 0.95*self.minRadius, points//5),
-            nu.linspace(1.05*self.minRadius, 5.0*self.minRadius, points*4//5),
-        ])
-        zs = nu.linspace(-self.Z0*5.0, self.Z0*5.0, points)
-        bs = nu.zeros((len(los), len(zs)))
-        for i, lo in enumerate(los):
-            for j, z in enumerate(zs):
-                a = calculateBnormFromCoil(I1, r1, l1, N1, lo, z)
-                b = sum( (calculateBnormFromLoop(I1, r2, z2, lo, z) for r2, z2 in self.distributionInRealCoordinates) )
-                # loss += (a - b/sqrt(1+(R2/L2)**2)*M/L2)**2
-                bs[i, j] = a - b/sqrt(1+(R2/L2)**2)*M/L2
-        _los, _zs = nu.meshgrid(los, zs, indexing='ij')
-        pl.contourf(_los, _zs, bs)
+def plotBzDistribution(points=50):
+        data = pd.read_csv('tempBzDistribution.csv')
+        data = data.pivot(index='r', columns='z', values='B')
+        pl.contourf(data.index, data.columns, data.values.T)
         pl.colorbar()
         pl.show()
+
+
+if __name__ == '__main__':
+    plotBzDistribution()
