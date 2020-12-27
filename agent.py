@@ -14,7 +14,7 @@ from CoilClass import Coil
 
 class Agent():
     def __init__(self):
-        self.bzDistributionPath = './BzDistribution.csv'
+        self.bnormDistributionPath = './BnormDistribution.csv'
         self.parametersFilePath = './parameters.csv'
         self.coilDistributionPath = 'coilDistribution.csv'
         self.minRadius = 3.0e-2  # 3cm
@@ -103,15 +103,14 @@ class Agent():
         self.createCoilDistributionFile(coil=coil)
         # check if loss file exists
         while True:
-            if os.path.exists(self.bzDistributionPath):
-                if os.path.getsize(self.bzDistributionPath) >= 100:
+            if os.path.exists(self.bnormDistributionPath):
+                if os.path.getsize(self.bnormDistributionPath) >= 100:
                     break
             time.sleep(1)
         # get loss
         # _loss = getVariance(self.bzDistributionPath)
-        data = pd.read_csv(self.bzDistributionPath, skiprows=8)
+        data = pd.read_csv(self.bnormDistributionPath, skiprows=8)
         data.columns = ['r', 'z', 'B']
-        data.to_csv('./tempBzDistribution.csv', index=False)
         # data['r'] *= 1e2  # [m] -> [cm]
         # data['z'] *= 1e2  # [m] -> [cm]
         bsOut = nu.array([])
@@ -150,10 +149,16 @@ class Agent():
             os.remove(self.coilDistributionPath)
 
         try:
-            os.remove(self.bzDistributionPath)
+            os.remove(self.bnormDistributionPath)
         except PermissionError:
             time.sleep(1)
-            os.remove(self.bzDistributionPath)
+            os.remove(self.bnormDistributionPath)
+
+        # plot Bz Distribution.png
+        fig = pl.figure()
+        pl.contourf(data.index, data.columns, data.values.T)
+        pl.colorbar()
+        fig.savefig('./tempBnormDistribution.png')
 
         return _loss
 
