@@ -107,6 +107,12 @@ class Agent():
                 if os.path.getsize(self.bnormDistributionPath) >= 100:
                     break
             time.sleep(1)
+        # if loss file is generated, delete old coilDistribution file
+        try:
+            os.remove(self.coilDistributionPath)
+        except PermissionError:
+            time.sleep(1)
+            os.remove(self.coilDistributionPath)
         # get loss
         # _loss = getVariance(self.bzDistributionPath)
         data = pd.read_csv(self.bnormDistributionPath, skiprows=8)
@@ -142,11 +148,6 @@ class Agent():
         _loss = abs(bsIn).mean() / abs(bsOut).mean()
 
         # if we get loss, delete curveDistribution, so make sure comsol wait for enough long time after study is completed.
-        try:
-            os.remove(self.coilDistributionPath)
-        except PermissionError:
-            time.sleep(1)
-            os.remove(self.coilDistributionPath)
 
         try:
             os.remove(self.bnormDistributionPath)
@@ -154,7 +155,10 @@ class Agent():
             time.sleep(1)
             os.remove(self.bnormDistributionPath)
 
+        # save to temp data
+        data.to_csv("tempBnormDistribution.csv")
         # plot Bz Distribution.png
+        data = data.pivot(index='r', columns="z", values="B")
         fig = pl.figure()
         pl.contourf(data.index, data.columns, data.values.T)
         pl.colorbar()
