@@ -17,8 +17,8 @@ class Agent():
         self.bnormDistributionPath = './BnormDistribution.csv'
         self.parametersFilePath = './parameters.csv'
         self.coilDistributionPath = 'coilDistribution.csv'
-        self.minRadius = 3.0e-2  # 3cm
-        self.Z0 = 15e-2  # 15cm
+        self.minRadius = 1.5e-2  # 1.5cm
+        self.Z0 = 6e-2  # 6cm
         self.scWidth = 4e-3  # 4mm
         self.scThickness = 0.1e-3  # 0.1mm
         self.airGap = self.scThickness/2
@@ -62,6 +62,7 @@ class Agent():
             self.survived = sorted(generation, key=lambda coil: coil.loss)[:self.survivalPerGeneration]
             # show information for current loop
             _averageLoss = nu.array([ coil.loss for coil in self.survived ]).mean()
+            # save
             _end = dt.datetime.now()
             print('step: {:>4}, avgLoss: {:>18.16f} (time cost: {:.3g}[min])'.format(step+1, _averageLoss, (_end-_start).total_seconds()/60))
             # prepare for the next loop
@@ -76,8 +77,11 @@ class Agent():
         })
         data = data.append({'parameter': 'Z0', 'value': f'{self.Z0*100}[cm]'}, ignore_index=True)
         data = data.append({'parameter': 'l2', 'value': f'{self.Z0*2*100}[cm]'}, ignore_index=True)
-        data = data.append({'parameter': 'l1', 'value': f'{20}[cm]'}, ignore_index=True)
-        data = data.append({'parameter': 'outerCoilWidth', 'value': f'{2}[cm]'}, ignore_index=True)
+        data = data.append({'parameter': 'outerCoilHeight', 'value': '20[cm]'}, ignore_index=True)
+        data = data.append({'parameter': 'outerCoilThickness', 'value': '2[cm]'}, ignore_index=True)
+        data = data.append({'parameter': 'outerCoilRadius', 'value': '7[cm]'}, ignore_index=True)
+        data = data.append({'parameter': 'outerCoilTurns', 'value': '40'}, ignore_index=True)
+        data = data.append({'parameter': 'outerCoilCurrent', 'value': '100[A]'}, ignore_index=True)
         data = data.append({'parameter': 'minRadius', 'value': f'{self.minRadius*100}[cm]'}, ignore_index=True)
         data = data.append({'parameter': 'scThickness', 'value': f'{self.scThickness*1000}[mm]'}, ignore_index=True)
         data = data.append({'parameter': 'layerAmount', 'value': f'{self.layerAmount}'}, ignore_index=True)
@@ -124,17 +128,18 @@ class Agent():
         bsOut = nu.array([])
         bsIn = nu.array([])
         for i in data.index:
-            lo = data.iloc[i, 0]
-            z = data.iloc[i, 1]
+            lo = data.loc[i, "r"]
+            z = data.loc[i, "z"]
             z_abs = abs(z)
-            b = data.iloc[i, 2]
+            b = data.loc[i, "B"]
+            # print(lo, self.minRadius, z_abs, self.Z0)
             # inside
             if lo <= self.minRadius*0.99 and z_abs <= self.Z0:
-                bsIn = nu.append(bsIn, data.iloc[i, 2])
+                bsIn = nu.append(bsIn, b)
             # outside
             # elif 1.4*minRadius >= lo >= minRadius*1.01 or 1.4*Z0 >= z_abs > Z0:
             elif 2.0*self.minRadius >= lo and 1.8*self.Z0 >= z_abs > self.Z0:
-                bsOut = nu.append(bsOut, data.iloc[i, 2])
+                bsOut = nu.append(bsOut, b)
             # mergin
             else:
                 continue
