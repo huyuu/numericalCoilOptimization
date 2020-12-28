@@ -35,8 +35,8 @@ class Agent():
         else:
             self.averageLosses = nu.array([])
         # get the last generation
-        if os.path.exists('lastGeneration.pickle'):
-            with open('lastGeneration.pickle', 'rb') as file:
+        if os.path.exists('lastSurvived.pickle'):
+            with open('lastSurvived.pickle', 'rb') as file:
                 self.survived = pickle.load(file)
         # initial the first generation
         else:
@@ -62,7 +62,22 @@ class Agent():
             self.survived = sorted(generation, key=lambda coil: coil.loss)[:self.survivalPerGeneration]
             # show information for current loop
             _averageLoss = nu.array([ coil.loss for coil in self.survived ]).mean()
-            # save
+            # save coil
+            with open('lastSurvived.pickle', 'wb') as file:
+                pickle.dump(self.survived, file)
+            with open('averageLosses.pickle', 'wb') as file:
+                pickle.dump(self.averageLosses, file)
+            # save fig
+            self.averageLosses.append(_averageLoss)
+            fig = pl.figure()
+            pl.title('Training Result', fontsize=22)
+            pl.xlabel('loop count', fontsize=18)
+            pl.ylabel('min loss', fontsize=18)
+            pl.yscale('log')
+            pl.plot(self.averageLosses)
+            pl.tick_params(labelsize=12)
+            fig.savefig('trainingResult.png')
+            pl.close(fig)
             _end = dt.datetime.now()
             print('step: {:>4}, avgLoss: {:>18.16f} (time cost: {:.3g}[min])'.format(step+1, _averageLoss, (_end-_start).total_seconds()/60))
             # prepare for the next loop
@@ -170,6 +185,7 @@ class Agent():
         pl.contourf(data.index, data.columns, data.values.T)
         pl.colorbar()
         fig.savefig('./tempBnormDistribution.png')
+        pl.close(fig)
 
         return _loss
 
