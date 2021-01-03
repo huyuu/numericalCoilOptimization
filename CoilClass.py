@@ -35,7 +35,7 @@ class Coil():
         coil = Coil(length=baseCoil.length, minRadius=baseCoil.minRadius, scWidth=baseCoil.scWidth, scThickness=baseCoil.scThickness, stairAmount=baseCoil.columnAmount, layerAmount=baseCoil.rowAmount)
         coil.distribution = baseCoil.distribution.copy()
         coil.distributionInRealCoordinates = baseCoil.distributionInRealCoordinates.copy()
-        coil.loss = baseCoil.loss
+        # coil.loss = baseCoil.loss
         return coil
 
 
@@ -89,7 +89,7 @@ class Coil():
 
 
     def makeDescendants(self, amount):
-        descendants = []
+        descendants = [self]
         count = 0
         amount = amount // 2
         candidates = []

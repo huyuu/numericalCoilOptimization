@@ -26,8 +26,8 @@ class Agent():
         self.stairAmount = int(self.Z0*2/self.scWidth)
         self.B0 = 1
 
-        self.survivalPerGeneration = 30
-        self.descendantsPerLife = 6
+        self.survivalPerGeneration = 20
+        self.descendantsPerLife = 5
         # set avgLosses
         if os.path.exists('averageLosses.pickle'):
             with open('averageLosses.pickle', 'rb') as file:
@@ -61,14 +61,15 @@ class Agent():
             # get survived coils
             self.survived = sorted(generation, key=lambda coil: coil.loss)[:self.survivalPerGeneration]
             # show information for current loop
-            _averageLoss = nu.array([ coil.loss for coil in self.survived ]).mean()
+            # _averageLoss = nu.array([ coil.loss for coil in self.survived ]).mean()
+            _averageLoss = self.survived[0].loss
             # save coil
             with open('lastSurvived.pickle', 'wb') as file:
                 pickle.dump(self.survived, file)
             with open('averageLosses.pickle', 'wb') as file:
                 pickle.dump(self.averageLosses, file)
             # save fig
-            self.averageLosses.append(_averageLoss)
+            self.averageLosses = nu.append(self.averageLosses, _averageLoss)
             fig = pl.figure()
             pl.title('Training Result', fontsize=22)
             pl.xlabel('loop count', fontsize=18)
@@ -80,6 +81,7 @@ class Agent():
             pl.close(fig)
             _end = dt.datetime.now()
             print('step: {:>4}, avgLoss: {:>18.16f} (time cost: {:.3g}[min])'.format(step+1, _averageLoss, (_end-_start).total_seconds()/60))
+            print(f"best coil: {self.survived[0].distribution}")
             # prepare for the next loop
             step += 1
 
@@ -120,14 +122,16 @@ class Agent():
 
 
     def lossOf(self, coil):
+        if not coil.loss is None:
+            return coil.loss
         # create parametersFile with coil distribution
         self.createCoilDistributionFile(coil=coil)
         # check if loss file exists
         while True:
             if os.path.exists(self.bnormDistributionPath):
-                if os.path.getsize(self.bnormDistributionPath) >= 100:
+                if os.path.getsize(self.bnormDistributionPath) >= 55000000:
                     break
-            time.sleep(1)
+            time.sleep(3)
         # if loss file is generated, delete old coilDistribution file
         try:
             os.remove(self.coilDistributionPath)
@@ -135,8 +139,7 @@ class Agent():
             time.sleep(1)
             os.remove(self.coilDistributionPath)
         # get loss
-        # _loss = getVariance(self.bzDistributionPath)
-        data = pd.read_csv(self.bnormDistributionPath, skiprows=8)
+        data = pd.read_csv(self.bnormDistributionPath, skiprows=8, low_memory=False, dtype=nu.float64)
         data.columns = ['r', 'z', 'B']
         # data['r'] *= 1e2  # [m] -> [cm]
         # data['z'] *= 1e2  # [m] -> [cm]
@@ -145,9 +148,12 @@ class Agent():
         for i in data.index:
             lo = data.loc[i, "r"]
             z = data.loc[i, "z"]
+            if not isinstance(z, nu.float64):
+                z = float(z)
             z_abs = abs(z)
             b = data.loc[i, "B"]
-            # print(lo, self.minRadius, z_abs, self.Z0)
+            if not isinstance(b, nu.float64):
+                b = float(b)
             # inside
             if lo <= self.minRadius*0.99 and z_abs <= self.Z0:
                 bsIn = nu.append(bsIn, b)
