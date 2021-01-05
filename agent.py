@@ -22,11 +22,11 @@ class Agent():
         self.scWidth = 4e-3  # 4mm
         self.scThickness = 0.1e-3  # 0.1mm
         self.airGap = self.scThickness/2
-        self.layerAmount = 8
+        self.layerAmount = 4
         self.stairAmount = int(self.Z0*2/self.scWidth)
         self.B0 = 1
 
-        self.survivalPerGeneration = 20
+        self.survivalPerGeneration = 10
         self.descendantsPerLife = 5
         # set avgLosses
         if os.path.exists('averageLosses.pickle'):

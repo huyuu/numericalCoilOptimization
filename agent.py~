@@ -19,15 +19,15 @@ class Agent():
         self.coilDistributionPath = 'coilDistribution.csv'
         self.minRadius = 1.5e-2  # 1.5cm
         self.Z0 = 6e-2  # 6cm
-        self.scWidth = 4e-3  # 4mm
+        self.scWidth = 12e-3  # 12mm
         self.scThickness = 0.1e-3  # 0.1mm
         self.airGap = self.scThickness/2
-        self.layerAmount = 8
+        self.layerAmount = 4
         self.stairAmount = int(self.Z0*2/self.scWidth)
         self.B0 = 1
 
-        self.survivalPerGeneration = 20
-        self.descendantsPerLife = 5
+        self.survivalPerGeneration = 10
+        self.descendantsPerLife = 3
         # set avgLosses
         if os.path.exists('averageLosses.pickle'):
             with open('averageLosses.pickle', 'rb') as file:
@@ -122,6 +122,8 @@ class Agent():
 
 
     def lossOf(self, coil):
+        if not coil.loss is None:
+            return coil.loss
         # create parametersFile with coil distribution
         self.createCoilDistributionFile(coil=coil)
         # check if loss file exists
