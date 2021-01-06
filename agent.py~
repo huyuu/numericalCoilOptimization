@@ -19,7 +19,7 @@ class Agent():
         self.coilDistributionPath = 'coilDistribution.csv'
         self.minRadius = 1.5e-2  # 1.5cm
         self.Z0 = 6e-2  # 6cm
-        self.scWidth = 12e-3  # 12mm
+        self.scWidth = 4e-3  # 4mm
         self.scThickness = 0.1e-3  # 0.1mm
         self.airGap = self.scThickness/2
         self.layerAmount = 4
@@ -27,7 +27,7 @@ class Agent():
         self.B0 = 1
 
         self.survivalPerGeneration = 10
-        self.descendantsPerLife = 3
+        self.descendantsPerLife = 5
         # set avgLosses
         if os.path.exists('averageLosses.pickle'):
             with open('averageLosses.pickle', 'rb') as file:
@@ -42,6 +42,10 @@ class Agent():
         else:
             coil = Coil(length=self.Z0*2, minRadius=self.minRadius, scWidth=self.scWidth, scThickness=self.scThickness, stairAmount=self.stairAmount, layerAmount=self.layerAmount)
             self.survived = coil.makeDescendants(amount=self.survivalPerGeneration)
+        # set initial coil
+        self.initialCoil = Coil(length=self.Z0*2, minRadius=self.minRadius, scWidth=self.scWidth, scThickness=self.scThickness, stairAmount=self.stairAmount, layerAmount=self.layerAmount)
+        self.initialCoilBnormPath = "initialCoilBnormDistribution.csv"
+        self.bestCoilBnormPath = "bestCoilBnormDistribution.csv"
 
 
     def run(self):
@@ -108,7 +112,7 @@ class Agent():
         data.to_csv(self.parametersFilePath, header=False, index=False)
 
 
-    def createCoilDistributionFile(self, coil):
+    def createCoilDistributionFile(self, coil, path=None):
         data = pd.DataFrame({}, columns=['layer', 'stair'])
         # coil positions
         comsolDistribution = coil.distribution.T[:, ::-1]
@@ -118,29 +122,41 @@ class Agent():
                 # if the ring is that position exists
                 if didRingExist:
                     data = data.append({'layer': layer, 'stair': stair}, ignore_index=True)
-        data.to_csv(self.coilDistributionPath, header=False, index=False)
+        if path is None:
+            data.to_csv(self.coilDistributionPath, header=False, index=False)
+        else:
+            data.to_csv(path, header=False, index=False)
 
 
-    def lossOf(self, coil):
+    def lossOf(self, coil, writeCoilDistributionPath=None, listeningBnormPath=None):
         if not coil.loss is None:
             return coil.loss
+
         # create parametersFile with coil distribution
-        self.createCoilDistributionFile(coil=coil)
+        if writeCoilDistributionPath is None:
+            writeCoilDistributionPath = self.coilDistributionPath
+            self.createCoilDistributionFile(coil=coil)
+        else:
+            self.createCoilDistributionFile(coil=coil, path=writeCoilDistributionPath)
+        # get listening Bnorm Path
+        if listeningBnormPath is None:
+            listeningBnormPath = self.bnormDistributionPath
         # check if loss file exists
         while True:
-            if os.path.exists(self.bnormDistributionPath):
-                if os.path.getsize(self.bnormDistributionPath) >= 55000000:
+            if os.path.exists(listeningBnormPath):
+                if os.path.getsize(listeningBnormPath) >= 55000000:
                     break
             time.sleep(3)
         # if loss file is generated, delete old coilDistribution file
         try:
-            os.remove(self.coilDistributionPath)
+            os.remove(writeCoilDistributionPath)
         except PermissionError:
             time.sleep(1)
-            os.remove(self.coilDistributionPath)
+            os.remove(writeCoilDistributionPath)
         # get loss
-        data = pd.read_csv(self.bnormDistributionPath, skiprows=8, low_memory=False, dtype=nu.float64)
+        data = pd.read_csv(listeningBnormPath, skiprows=8, low_memory=False, dtype=nu.float64)
         data.columns = ['r', 'z', 'B']
+        data = data.dropna()
         # data['r'] *= 1e2  # [m] -> [cm]
         # data['z'] *= 1e2  # [m] -> [cm]
         bsOut = nu.array([])
@@ -178,20 +194,30 @@ class Agent():
         # if we get loss, delete curveDistribution, so make sure comsol wait for enough long time after study is completed.
 
         try:
-            os.remove(self.bnormDistributionPath)
+            os.remove(listeningBnormPath)
         except PermissionError:
             time.sleep(1)
-            os.remove(self.bnormDistributionPath)
+            os.remove(listeningBnormPath)
 
-        # save to temp data
-        data.to_csv("tempBnormDistribution.csv")
-        # plot Bz Distribution.png
-        data = data.pivot(index='r', columns="z", values="B")
-        fig = pl.figure()
-        pl.contourf(data.index, data.columns, data.values.T)
-        pl.colorbar()
-        fig.savefig('./tempBnormDistribution.png')
-        pl.close(fig)
+        if listeningBnormPath == self.bnormDistributionPath and writeCoilDistributionPath == self.coilDistributionPath:
+            # save to temp data
+            data.to_csv("tempBnormDistribution.csv")
+            # plot Bz Distribution.png
+            data = data.pivot(index='r', columns="z", values="B")
+            fig = pl.figure()
+            pl.contourf(data.index, data.columns, data.values.T)
+            pl.colorbar()
+            fig.savefig('./tempBnormDistribution.png')
+            pl.close(fig)
+        else:
+            pngPath = listeningBnormPath.strip(".")[0] + ".png"
+            data = data.pivot(index='r', columns="z", values="B")
+            fig = pl.figure()
+            pl.contourf(data.index, data.columns, data.values.T)
+            pl.colorbar()
+            fig.savefig(f'./{pngPath}')
+            pl.close(fig)
+
 
         return _loss
 

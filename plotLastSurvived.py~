@@ -10,18 +10,34 @@ with open("lastSurvived.pickle", "rb") as file:
 
 for coil in survived:
     print(coil.distribution)
+    print(coil.loss)
+    print("")
 
 agent = Agent()
-agent.coilDistributionPath = "bestCoilDistribution.csv"
-
 coil = survived[0]
-agent.createCoilDistributionFile(survived[0])
+coil.loss = None
+print(agent.lossOf(coil)
+print(agent.lossOf(coil, writeCoilDistributionPath="bestCoilDistribution.csv", listeningBnormPath="bestCoilBnormDistribution.csv"))
+print(agent.lossOf(agent.initialCoil, writeCoilDistributionPath="initialCoilDistribution.csv", listeningBnormPath="initialCoilBnormDistribution.csv"))
 
-data = pd.read_csv("BestCoilBnormDistribution.csv", skiprows=8)
+
+exit()
+
+data = pd.read_csv("bestCoilBnormDistribution.csv", skiprows=8)
 data.columns = ["r", "z", "B"]
 data = data.pivot(index="r", columns="z", values="B")
 fig = pl.figure()
 pl.contourf(data.index, data.columns, data.values.T)
 pl.colorbar()
-fig.savefig("BestCoilBnormDistribution.png")
+fig.savefig("bestCoilBnormDistribution.png")
+pl.close(fig)
+
+
+data = pd.read_csv("initialCoilBnormmDistribution.csv", skiprows=8)
+data.columns = ["r", "z", "B"]
+data = data.pivot(index="r", columns="z", values="B")
+fig = pl.figure()
+pl.contourf(data.index, data.columns, data.values.T)
+pl.colorbar()
+fig.savefig("initialCoilBnormDistribution.png")
 pl.close(fig)
