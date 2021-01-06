@@ -210,7 +210,7 @@ class Agent():
             fig.savefig('./tempBnormDistribution.png')
             pl.close(fig)
         else:
-            pngPath = listeningBnormPath.strip(".")[0] + ".png"
+            pngPath = listeningBnormPath.split(".")[0] + ".png"
             data = data.pivot(index='r', columns="z", values="B")
             fig = pl.figure()
             pl.contourf(data.index, data.columns, data.values.T)

@@ -156,7 +156,6 @@ class Agent():
         # get loss
         data = pd.read_csv(listeningBnormPath, skiprows=8, low_memory=False, dtype=nu.float64)
         data.columns = ['r', 'z', 'B']
-        data = data.dropna()
         # data['r'] *= 1e2  # [m] -> [cm]
         # data['z'] *= 1e2  # [m] -> [cm]
         bsOut = nu.array([])
