@@ -26,8 +26,8 @@ class Agent():
         self.stairAmount = int(self.Z0*2/self.scWidth)
         self.B0 = 1
 
-        self.survivalPerGeneration = 10
-        self.descendantsPerLife = 5
+        self.survivalPerGeneration = 20
+        self.descendantsPerLife = 3
         # set avgLosses
         if os.path.exists('averageLosses.pickle'):
             with open('averageLosses.pickle', 'rb') as file:
@@ -65,8 +65,8 @@ class Agent():
             # get survived coils
             self.survived = sorted(generation, key=lambda coil: coil.loss)[:self.survivalPerGeneration]
             # show information for current loop
-            # _averageLoss = nu.array([ coil.loss for coil in self.survived ]).mean()
-            _averageLoss = self.survived[0].loss
+            _averageLoss = nu.array([ coil.loss for coil in self.survived ]).mean()
+            # _averageLoss = self.survived[0].loss
             # save coil
             with open('lastSurvived.pickle', 'wb') as file:
                 pickle.dump(self.survived, file)
@@ -85,7 +85,8 @@ class Agent():
             pl.close(fig)
             _end = dt.datetime.now()
             print('step: {:>4}, avgLoss: {:>18.16f} (time cost: {:.3g}[min])'.format(step+1, _averageLoss, (_end-_start).total_seconds()/60))
-            print(f"best coil: {self.survived[0].distribution}")
+            print("best Coil:")
+            print(f"{self.survived[0].distribution}")
             # prepare for the next loop
             step += 1
 
@@ -144,7 +145,7 @@ class Agent():
         # check if loss file exists
         while True:
             if os.path.exists(listeningBnormPath):
-                if os.path.getsize(listeningBnormPath) >= 55000000:
+                if os.path.getsize(listeningBnormPath) >= 9600000:
                     break
             time.sleep(3)
         # if loss file is generated, delete old coilDistribution file

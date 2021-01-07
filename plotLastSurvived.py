@@ -17,8 +17,8 @@ agent = Agent()
 coil = survived[0]
 coil.loss = None
 # print(agent.lossOf(coil))
-print(agent.lossOf(coil, writeCoilDistributionPath="bestCoilDistribution.csv", listeningBnormPath="bestCoilBnormDistribution.csv"))
 print(agent.lossOf(agent.initialCoil, writeCoilDistributionPath="initialCoilDistribution.csv", listeningBnormPath="initialCoilBnormDistribution.csv"))
+print(agent.lossOf(coil, writeCoilDistributionPath="bestCoilDistribution.csv", listeningBnormPath="bestCoilBnormDistribution.csv"))
 
 
 exit()

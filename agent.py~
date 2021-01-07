@@ -26,8 +26,8 @@ class Agent():
         self.stairAmount = int(self.Z0*2/self.scWidth)
         self.B0 = 1
 
-        self.survivalPerGeneration = 10
-        self.descendantsPerLife = 5
+        self.survivalPerGeneration = 20
+        self.descendantsPerLife = 3
         # set avgLosses
         if os.path.exists('averageLosses.pickle'):
             with open('averageLosses.pickle', 'rb') as file:
@@ -65,8 +65,8 @@ class Agent():
             # get survived coils
             self.survived = sorted(generation, key=lambda coil: coil.loss)[:self.survivalPerGeneration]
             # show information for current loop
-            # _averageLoss = nu.array([ coil.loss for coil in self.survived ]).mean()
-            _averageLoss = self.survived[0].loss
+            _averageLoss = nu.array([ coil.loss for coil in self.survived ]).mean()
+            # _averageLoss = self.survived[0].loss
             # save coil
             with open('lastSurvived.pickle', 'wb') as file:
                 pickle.dump(self.survived, file)
@@ -144,7 +144,7 @@ class Agent():
         # check if loss file exists
         while True:
             if os.path.exists(listeningBnormPath):
-                if os.path.getsize(listeningBnormPath) >= 55000000:
+                if os.path.getsize(listeningBnormPath) >= 9600000:
                     break
             time.sleep(3)
         # if loss file is generated, delete old coilDistribution file
@@ -156,7 +156,6 @@ class Agent():
         # get loss
         data = pd.read_csv(listeningBnormPath, skiprows=8, low_memory=False, dtype=nu.float64)
         data.columns = ['r', 'z', 'B']
-        data = data.dropna()
         # data['r'] *= 1e2  # [m] -> [cm]
         # data['z'] *= 1e2  # [m] -> [cm]
         bsOut = nu.array([])
