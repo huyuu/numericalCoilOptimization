@@ -60,7 +60,8 @@ class Agent():
                 babyCoils = coil.makeDescendants(amount=self.descendantsPerLife)
                 # calculate their losses
                 for _coil in babyCoils:
-                    _coil.loss = self.lossOf(_coil)
+                    _loss, notUsed, _notUsed = self.lossOf(_coil)
+                    _coil.loss = _loss
                 generation.extend(babyCoils)
             # get survived coils
             self.survived = sorted(generation, key=lambda coil: coil.loss)[:self.survivalPerGeneration]
@@ -131,7 +132,7 @@ class Agent():
 
     def lossOf(self, coil, writeCoilDistributionPath=None, listeningBnormPath=None):
         if not coil.loss is None:
-            return coil.loss
+            return coil.loss, 0, 0
 
         # create parametersFile with coil distribution
         if writeCoilDistributionPath is None:
@@ -189,7 +190,8 @@ class Agent():
         assert bsIn.shape[0] >= 100
         assert bsOut.shape[0] >= 100
         # return 100 * (1/abs(bsOut).mean() + abs(bsIn).mean())
-        _loss = abs(bsIn).mean() / abs(bsOut).mean()
+        # _loss = abs(bsIn).mean() / (abs(bsOut).mean()*3)
+        _loss = abs(bsIn).mean() - abs(bsOut).mean()*3
 
         # if we get loss, delete curveDistribution, so make sure comsol wait for enough long time after study is completed.
 
@@ -219,7 +221,7 @@ class Agent():
             pl.close(fig)
 
 
-        return _loss
+        return _loss, abs(bsIn).mean(), abs(bsOut).mean()
 
 
 
