@@ -79,7 +79,6 @@ class Agent():
             pl.title('Training Result', fontsize=22)
             pl.xlabel('loop count', fontsize=18)
             pl.ylabel('min loss', fontsize=18)
-            pl.yscale('log')
             pl.plot(self.averageLosses)
             pl.tick_params(labelsize=12)
             fig.savefig('trainingResult.png')
@@ -190,7 +189,8 @@ class Agent():
         assert bsIn.shape[0] >= 100
         assert bsOut.shape[0] >= 100
         # return 100 * (1/abs(bsOut).mean() + abs(bsIn).mean())
-        _loss = abs(bsIn).mean() / (abs(bsOut).mean()*3)
+        # _loss = abs(bsIn).mean() / (abs(bsOut).mean()*3)
+        _loss = abs(bsIn).mean() - abs(bsOut).mean()
 
         # if we get loss, delete curveDistribution, so make sure comsol wait for enough long time after study is completed.
 
