@@ -145,7 +145,7 @@ class Agent():
         # check if loss file exists
         while True:
             if os.path.exists(listeningBnormPath):
-                if os.path.getsize(listeningBnormPath) >= 9600000:
+                if os.path.getsize(listeningBnormPath) >= 8000000:
                     break
             time.sleep(3)
         # if loss file is generated, delete old coilDistribution file
